@@ -1,0 +1,18 @@
+services:
+  yolo:
+    build:
+      context: ./YOLO
+      dockerfile: Dockerfile
+    container_name: yolo-container
+    #volumes:
+     # - ./YOLO/logs/runs:/app/runs
+     # - ./YOLO/datasets:/app/datasets
+     # - ./YOLO/logs/weights:/app/weights
+
+  tensorboard:
+    image: tensorflow/tensorflow:latest
+    container_name: tensorboard-container
+    command: >
+      tensorboard --logdir=/runs --host=0.0.0.0
+    ports:
+      - "6006:6006"
