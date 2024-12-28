@@ -11,7 +11,7 @@ class CropAndWeedDataset(Dataset):
                  transform=None, target_transform=None):
         self.dataset = dataset
         self.img_dir = img_dir
-        self.bboxes_dir = os.path.join(bboxes_dir, self.dataset, f"{self.dataset}_annotations.csv")
+        self.bboxes_dir = os.path.join(bboxes_dir, self.dataset, f"{self.dataset}.csv")
         self.bboxes = pd.read_csv(self.bboxes_dir)
         #self.labels_dir = labels_dir  # Optional, used only for segmentation tasks
         #self.params_dir = params_dir  # Optional, used for additional parameters
