@@ -2,3 +2,4 @@ cropandweed_dataset/
 .idea/
 __pycache__/
 runs/
+YOLO/datasets/
