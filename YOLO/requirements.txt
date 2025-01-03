@@ -1,6 +1,8 @@
-ultralytics==8.3.51
+--extra-index-url https://download.pytorch.org/whl/cu124
 torch
 torchvision
+torchaudio
+ultralytics==8.3.57
 tqdm
 tensorboard
 pyyaml

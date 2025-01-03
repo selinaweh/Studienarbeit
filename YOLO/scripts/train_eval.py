@@ -3,13 +3,14 @@ from types import SimpleNamespace
 from ultralytics import YOLO, settings
 from ultralytics.cfg import get_save_dir
 import os
+import sys
 import torch
 #from config import YOLO_DATA_DIR
 #import yaml
 
 #fine24 = os.path.join(YOLO_DATA_DIR, "Fine24/Fine24.yaml")
 #crop_or_weed2 = os.path.join(YOLO_DATA_DIR, "CropOrWeed2/CropOrWeed2.yaml")
-crop_or_weed2 = os.path.join("app/datasets/", "CropOrWeed2/CropOrWeed2.yaml")
+crop_or_weed2 = "app/datasets/CropOrWeed2/CropOrWeed2.yaml"
 model_pretrained = "models/yolo11n.pt"
 
 yolo_fine24 = "models/yolo11n_fine24.pt"

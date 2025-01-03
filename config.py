@@ -13,6 +13,10 @@ BBOXES_DIR = os.path.join(DATA_DIR, "bboxes")
 LABELS_DIR = os.path.join(DATA_DIR, "labelIds")
 PARAMS_DIR = os.path.join(DATA_DIR, "params")
 
+# PyTorch datasets
+PT = os.path.join(project_dir, "pytorch/")
+PT_DATA_DIR = os.path.join(PT, "datasets/")
+
 # YOLO datasets
 YOLO = os.path.join(project_dir, "YOLO/")
 YOLO_DATA_DIR = os.path.join(YOLO, "datasets/")
