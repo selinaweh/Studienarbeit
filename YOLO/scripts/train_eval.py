@@ -1,26 +1,30 @@
-from types import SimpleNamespace
-
 from ultralytics import YOLO, settings
-from ultralytics.cfg import get_save_dir
 import os
-import sys
 import torch
-#from config import YOLO_DATA_DIR
-#import yaml
+#from ..config_paths import (DATASETS_DIR, FINE24, CROP_OR_WEED2, MODEL_PRETRAINED, YOLO_CROP_OR_WEED2, YOLO_FINE24, YOLO_BOTH)
+#from config import YOLO_DATA_DIR, YOLO_DIR
+import yaml
+
+
 
 #fine24 = os.path.join(YOLO_DATA_DIR, "Fine24/Fine24.yaml")
 #crop_or_weed2 = os.path.join(YOLO_DATA_DIR, "CropOrWeed2/CropOrWeed2.yaml")
-crop_or_weed2 = "app/datasets/CropOrWeed2/CropOrWeed2.yaml"
-model_pretrained = "models/yolo11n.pt"
+crop_or_weed2 = "/app/datasets/CropOrWeed2/CropOrWeed2.yaml"
+model_pretrained = "/app/models/yolo11n.pt"
+#model_pretrained = os.path.join(YOLO_DIR, "models/yolo11n.pt")
 
-yolo_fine24 = "models/yolo11n_fine24.pt"
-yolo_crop_or_weed2 = "models/yolo11n_crop_or_weed2.pt"
-yolo_both = "models/yolo11n_both.pt"
+#yolo_fine24 = os.path.join(YOLO_DIR, "models/yolo11n_fine24.pt")
+#yolo_crop_or_weed2 = os.path.join(YOLO_DIR, "models/yolo11n_crop_or_weed2.pt")
+#yolo_both = os.path.join(YOLO_DIR, "models/yolo11n_both.pt")
+
+yolo_fine24 = "/app/models/yolo11n_fine24.pt"
+yolo_crop_or_weed2 = "/app/models/yolo11n_crop_or_weed2.pt"
+yolo_both = "/app/models/yolo11n_both.pt"
 
 
 def update_settings():
     settings.update({
-        "datasets_dir": "app/datasets/", #YOLO_DATA_DIR,
+        "datasets_dir": "/app/datasets/", #YOLO_DATA_DIR,
         "tensorboard": True
     })
 
@@ -35,98 +39,116 @@ def get_device():
         else "cpu"
     )
 
-'''
-def tune_model(model_path, dataset_path, epochs=10, iterations=300, optimizer="Adam"):
-    print("Starting hyperparameter tuning...")
-    model = YOLO(model_path, task="detect", )
-    result_grid = model.tune(
-        data=dataset_path,
-        epochs=epochs,
-        iterations=iterations,
-        optimizer=optimizer,
-        use_ray=True,
-    )
+
+def get_latest_tune_dir(base_dir="runs/detect"):
+    if not os.path.exists(base_dir):
+        print(f"Base directory {base_dir} does not exist.")
+        return None
+
+    tune_dirs = [os.path.join(base_dir, d) for d in os.listdir(base_dir)
+                 if os.path.isdir(os.path.join(base_dir, d)) and d.startswith("tune")]
+
+    if not tune_dirs:
+        print(f"No tuning directories found in {base_dir}.")
+        return None
+
+    latest_tune_dir = max(tune_dirs, key=os.path.getmtime)
+    return latest_tune_dir
 
 
-def train_model(model_path, dataset_path, save_path, device, hyperparams=None, optimizer="auto", epochs=300, batch_size=16, patience=10):
-    print("Starting training...")
-    model = YOLO(model_path, task="detect")
-    results = model.train(
-        data=dataset_path,
-        epochs=epochs,
-        hyp='runs/detect/tune/best_hyperparameters.yaml',
-        device=device,
-        optimizer=optimizer,
-        batch_size=batch_size,
-        patience=patience,
-    )
-    model.save(save_path)
-    return results
-'''
-def tune_model(
-    model_path,
-    dataset_path,
-    task="detect",
-    epochs=10,
-    iterations=300,
-    optimizer="Adam",
-    use_ray=True
-):
-    print(f"Starting hyperparameter tuning for task: {task}...")
-    model = YOLO(model_path, task=task)
-    model.tune(
-        data=dataset_path,
-        epochs=epochs,
-        iterations=iterations,
-        optimizer=optimizer,
-        use_ray=use_ray
-    )
-    args = SimpleNamespace(project="YOLO", task="detect", mode="train", exist_ok=True)
-    save_dir = get_save_dir(args)
-    best_hyperparams_path = f"{save_dir}/best_hyperparameters.yaml"
-    print(f"Tuning completed. Best hyperparameters saved at: {best_hyperparams_path}")
-    return best_hyperparams_path
-
-def train_model(
-    model_path,
-    dataset_path,
-    save_path,
+def train_and_validate_model(
+    model,
+    dataset,
     device,
-    hyperparams_path=None,
-    task="detect",
+    save_path,
+    enable_tuning=False,
+    tune_epochs=2,
+    tune_iterations=6,
+    train_epochs=5,
+    batch=-1,
     optimizer="auto",
-    epochs=300,
-    batch=16,
     patience=10,
+    tune_optimizer="AdamW",
+    tune_plots=True,
+    tune_save=True,
+    tune_val=True
 ):
+    """
+    Trains, validates, and saves a model with optional hyperparameter tuning.
 
-    print(f"Starting training for task: {task}...")
-    model = YOLO(model_path, task=task)
+    Parameters:
+        model: The model to be trained and validated.
+        dataset: The dataset to be used for training and validation.
+        device: The device (e.g., 'cpu', 'cuda') to be used.
+        save_path: Path to save the trained model.
+        enable_tuning: Whether to perform hyperparameter tuning (default: False).
+        tune_epochs: Number of epochs for hyperparameter tuning.
+        tune_iterations: Number of iterations for hyperparameter tuning.
+        train_epochs: Number of epochs for training.
+        batch: Batch size for training and validation (-1 for auto).
+        optimizer: Optimizer for training.
+        patience: Early stopping patience during training.
+        tune_optimizer: Optimizer for hyperparameter tuning.
+        tune_plots: Whether to generate plots during hyperparameter tuning.
+        tune_save: Whether to save hyperparameter tuning results.
+        tune_val: Whether to perform validation during tuning.
+    """
+    hyperparameters = {}
 
-    train_args = {
-        "data": dataset_path,
-        "epochs": epochs,
-        "device": device,
-        "optimizer": optimizer,
-        "batch": batch,
-        "patience": patience,
-    }
+    # Hyperparameter tuning (optional)
+    if enable_tuning:
+        try:
+            model.tune(
+                data=dataset,
+                epochs=tune_epochs,
+                iterations=tune_iterations,
+                optimizer=tune_optimizer,
+                plots=tune_plots,
+                save=tune_save,
+                val=tune_val,
+                exist_ok=True
+            )
+            # Get the best hyperparameters
+            latest_tune_dir = get_latest_tune_dir("runs/detect")
+            if latest_tune_dir:
+                hyp_path = os.path.join(latest_tune_dir, "best_hyperparameters.yaml")
+                if os.path.exists(hyp_path):
+                    with open(hyp_path, 'r') as file:
+                        hyperparameters = yaml.safe_load(file)
+        except Exception as e:
+            print(f"Error during tuning: {e}")
+            print("Proceeding with default hyperparameters.")
 
-    if hyperparams_path:
-        train_args["hyp"] = hyperparams_path
+    if not hyperparameters:
+        print("Using default hyperparameters.")
 
-    results = model.train(**train_args)
-    model.save(save_path)
-    print(f"Training completed. Model saved at: {save_path}")
-    return results
+    # Train the model
+    try:
+        model.train(
+            data=dataset,
+            epochs=train_epochs,
+            device=device,
+            optimizer=optimizer,
+            batch=batch,
+            patience=patience,
+            exist_ok=True,
+            **hyperparameters
+        )
+    except Exception as e:
+        print(f"Error during training: {e}")
 
+    # Validation
+    try:
+        model.val(data=dataset, batch=batch, exist_ok=True)
+    except Exception as e:
+        print(f"Error during validation: {e}")
 
-def evaluate_model(model_path, dataset_path, device):
-    print("Starting evaluation...")
-    model = YOLO(model_path, task="detect")
-    metrics = model.val(data=dataset_path, device=device)
-    print("Evaluation completed:", metrics)
-    return metrics
+    # Save the model
+    try:
+        print(f"Saving model to: {save_path}")
+        model.save(save_path)
+    except Exception as e:
+        print(f"Error during saving: {e}")
 
 
 def main():
@@ -138,12 +160,57 @@ def main():
     update_settings()
     print(settings)
 
+    # Load model and dataset
+    model_crop_and_weed2 = YOLO(model_pretrained, task='detect')
+    #dataset = crop_or_weed2
+
+    train_and_validate_model(model_crop_and_weed2, crop_or_weed2, device, yolo_crop_or_weed2, enable_tuning=True, tune_epochs=10, tune_iterations=300, train_epochs=200)
+    '''
+    # Hyperparameter tuning
+    try:
+        model.tune(data=dataset, epochs=2, iterations=6, optimizer="AdamW", plots=True, save=True, val=True, exist_ok=True)
+    except Exception as e:
+        print(f"Error during tuning: {e}")
+        return
+    #hyp_path = "runs/detect/tune/best_hyperparameters.yaml"
+    latest_tune_dir = get_latest_tune_dir("runs/detect")
+    if latest_tune_dir:
+        hyp_path = os.path.join(latest_tune_dir, "best_hyperparameters.yaml")
+    else:
+        hyp_path = None
+
+    if hyp_path and os.path.exists(hyp_path):
+        with open(hyp_path, 'r') as file:
+            hyperparameters = yaml.safe_load(file)
+    else:
+        print("Using default hyperparameters.")
+        hyperparameters = {}
+
+    # Train the model
+    try:
+        model.train(data=dataset, epochs=5, device=device, optimizer="auto", batch=-1, patience=10, exist_ok=True, **hyperparameters)
+    except Exception as e:
+        print(f"Error during training: {e}")
+
+    # Validation
+    try:
+        model.val(data=dataset, batch=-1, exist_ok=True)
+    except Exception as e:
+        print(f"Error during validation: {e}")
+
+    # Save the model
+    try:
+        print(f"Saving model to: {yolo_crop_or_weed2}")
+        model.save(yolo_crop_or_weed2)
+    except Exception as e:
+        print(f"Error during saving: {e}")
+
     # CropOrWeed2 dataset
-    #best_hp_crop_or_weed2 = tune_model(model_pretrained, crop_or_weed2)
-    train_model(model_pretrained, crop_or_weed2, yolo_crop_or_weed2, device)#, best_hp_crop_or_weed2)
+    #tune_model(model_pretrained, crop_or_weed2)
+    train_model(model_pretrained, crop_or_weed2, yolo_crop_or_weed2, device)#, hyperparams=True)
     evaluate_model(yolo_crop_or_weed2, crop_or_weed2, device)
 
-    '''
+
     # Fine24 dataset
     best_hp_fine24 = tune_model(model_pretrained, fine24)
     train_model(model_pretrained, fine24, yolo_fine24, device, best_hp_fine24)

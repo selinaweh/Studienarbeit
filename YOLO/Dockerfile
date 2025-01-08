@@ -1,26 +1,33 @@
-FROM python:3.9-slim
-
-
+FROM python:3.11.0-slim
 
 RUN apt-get update && apt-get install -y \
-    python3-pip \
+    wget \
     git \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
     libxrender-dev \
     libgl1 && \
+    wget https://developer.download.nvidia.com/compute/cuda/repos/debian11/x86_64/cuda-keyring_1.0-1_all.deb && \
+    dpkg -i cuda-keyring_1.0-1_all.deb && \
+    apt-get update && apt-get install -y cuda-toolkit-12-4 && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+COPY ./requirements.txt /app/requirements.txt
+RUN pip3 install --no-cache-dir -r /app/requirements.txt
 
 COPY ./datasets /app/datasets
-COPY ./scripts /app/scripts
 COPY ./models /app/models
+COPY ./scripts /app/scripts
 
-# Standardkommando
-CMD ["python", "scripts/train_eval.py"]
+
+#CMD ["bash", "-c", "rm -rf /app/runs/detect/* && tensorboard --logdir=/app/runs --host=0.0.0.0 --port=6006 & python3 /app/scripts/train_eval.py"]
+#CMD ["bash", "-c", "rm -rf /app/runs/detect/* && python3 /app/scripts/train_eval.py"]
+CMD ["tensorboard --logdir=/app/runs --host=0.0.0.0 --port=6006 & python3 /app/scripts/train_eval.py"]
+
+#CMD ["python3", "/app/scripts/train_eval.py"]

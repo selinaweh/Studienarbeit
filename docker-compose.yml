@@ -1,18 +1,25 @@
+volumes:
+  runs:
+
 services:
   yolo:
     build:
       context: ./YOLO
       dockerfile: Dockerfile
     container_name: yolo-container
-    #volumes:
-     # - ./YOLO/logs/runs:/app/runs
-     # - ./YOLO/datasets:/app/datasets
-     # - ./YOLO/logs/weights:/app/weights
-
-  tensorboard:
-    image: tensorflow/tensorflow:latest
-    container_name: tensorboard-container
-    command: >
-      tensorboard --logdir=/runs --host=0.0.0.0
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    shm_size: '32gb'
+    volumes:
+      - runs:/app/runs
     ports:
       - "6006:6006"
