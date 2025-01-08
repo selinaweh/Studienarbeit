@@ -18,6 +18,9 @@ PT = os.path.join(project_dir, "pytorch/")
 PT_DATA_DIR = os.path.join(PT, "datasets/")
 
 # YOLO datasets
-YOLO = os.path.join(project_dir, "YOLO/")
-YOLO_DATA_DIR = os.path.join(YOLO, "datasets/")
+YOLO_DIR = os.path.join(project_dir, "YOLO/")
+YOLO_DATA_DIR = os.path.join(YOLO_DIR, "datasets/")
+
+# YOLO logs
+LOG_DIR = os.path.join(project_dir, "runs/detect")
 
