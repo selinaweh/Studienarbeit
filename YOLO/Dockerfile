@@ -21,13 +21,15 @@ RUN pip install torch torchvision torchaudio --index-url https://download.pytorc
 COPY ./requirements.txt /app/requirements.txt
 RUN pip3 install --no-cache-dir -r /app/requirements.txt
 
-COPY ./datasets /app/datasets
-COPY ./models /app/models
+
+COPY ./datasets/CropOrWeed2 /app/datasets/CropOrWeed2
+#COPY ./datasets/Coarse1 /app/datasets/Coarse1
+COPY ./models/cow_default_best /app/models/cow_default_best
+COPY ./models/yolo11l.pt /app/models/yo11l.pt
 COPY ./scripts /app/scripts
 
 
-#CMD ["bash", "-c", "rm -rf /app/runs/detect/* && tensorboard --logdir=/app/runs --host=0.0.0.0 --port=6006 & python3 /app/scripts/train_eval.py"]
-#CMD ["bash", "-c", "rm -rf /app/runs/detect/* && python3 /app/scripts/train_eval.py"]
-CMD ["tensorboard --logdir=/app/runs --host=0.0.0.0 --port=6006 & python3 /app/scripts/train_eval.py"]
+CMD ["bash", "-c", "rm -rf /app/runs/detect/* && rm -rf /app/datasets/Coarse1 && tensorboard --logdir=/app/runs --host=0.0.0.0 --port=6006 & python3 /app/scripts/train_eval.py"]
 
-#CMD ["python3", "/app/scripts/train_eval.py"]
+#CMD ["bash", "-c", "tensorboard --logdir=/app/runs --host=0.0.0.0 --port=6006 & python3 /app/scripts/train_eval.py"]
+

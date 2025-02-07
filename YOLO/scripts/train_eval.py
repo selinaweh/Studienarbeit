@@ -1,25 +1,39 @@
 from ultralytics import YOLO, settings
 import os
 import torch
+import time
 #from ..config_paths import (DATASETS_DIR, FINE24, CROP_OR_WEED2, MODEL_PRETRAINED, YOLO_CROP_OR_WEED2, YOLO_FINE24, YOLO_BOTH)
 #from config import YOLO_DATA_DIR, YOLO_DIR
 import yaml
 
-
-
-#fine24 = os.path.join(YOLO_DATA_DIR, "Fine24/Fine24.yaml")
 #crop_or_weed2 = os.path.join(YOLO_DATA_DIR, "CropOrWeed2/CropOrWeed2.yaml")
-crop_or_weed2 = "/app/datasets/CropOrWeed2/CropOrWeed2.yaml"
-model_pretrained = "/app/models/yolo11n.pt"
 #model_pretrained = os.path.join(YOLO_DIR, "models/yolo11n.pt")
+#yolo_crop_or_weed2 = os.path.join(YOLO_DIR, "models_trained/yolo11n_crop_or_weed2.pt")
 
-#yolo_fine24 = os.path.join(YOLO_DIR, "models/yolo11n_fine24.pt")
-#yolo_crop_or_weed2 = os.path.join(YOLO_DIR, "models/yolo11n_crop_or_weed2.pt")
-#yolo_both = os.path.join(YOLO_DIR, "models/yolo11n_both.pt")
+#_________________________datasets__________________________
 
-yolo_fine24 = "/app/models/yolo11n_fine24.pt"
-yolo_crop_or_weed2 = "/app/models/yolo11n_crop_or_weed2.pt"
-yolo_both = "/app/models/yolo11n_both.pt"
+# Dataset crop_or_weed2 uses normal labels without 255:Vegetation class
+# with an empty .txt file for images without objects (added manually)
+crop_or_weed2 = "/app/datasets/CropOrWeed2/CropOrWeed2.yaml"
+
+
+# Dataset crop_or_weed2_eval uses Eval labels with 255:Vegetation class converted to 2:Vegetation
+# with an empty .txt file for images without objects (already included in the dataset)
+crop_or_weed2_eval = "/app/datasets/CropOrWeed2Eval/CropOrWeed2Eval.yaml"
+
+# Coarse1 distinguishes only between Vegetation 0 and Background (only Vegetation class 0)
+# with an empty .txt file for images without objects (added manually, because Dataset was
+# already created; the only difference Coarse1 and Coarse1Eval are the empty .txt files,
+# no additional entries for this dataset subvariant)
+coarse1 = "/app/datasets/Coarse1/Coarse1.yaml"
+
+
+#____________________models pretrained________________________
+model_yolo11n = "/app/models/yolo11n.pt" # nano Yolo11n
+model_yolo11s = "/app/models/yolo11s.pt" # small Yolo11s
+model_yolo11m = "/app/models/yolo11m.pt" # medium Yolo11m
+
+
 
 
 def update_settings():
@@ -60,14 +74,16 @@ def train_and_validate_model(
     model,
     dataset,
     device,
-    save_path,
+    imgsz=640,
+    save_path=None,
     enable_tuning=False,
-    tune_epochs=2,
-    tune_iterations=6,
-    train_epochs=5,
-    batch=-1,
+    tune_epochs=10,
+    tune_iterations=100,
+    train_epochs=100,
+    batch=16,
     optimizer="auto",
     patience=10,
+    hyperparameters=None,
     tune_optimizer="AdamW",
     tune_plots=True,
     tune_save=True,
@@ -88,14 +104,16 @@ def train_and_validate_model(
         batch: Batch size for training and validation (-1 for auto).
         optimizer: Optimizer for training.
         patience: Early stopping patience during training.
+        hyperparameters: Dictionary of hyperparameters for training.
         tune_optimizer: Optimizer for hyperparameter tuning.
         tune_plots: Whether to generate plots during hyperparameter tuning.
         tune_save: Whether to save hyperparameter tuning results.
         tune_val: Whether to perform validation during tuning.
     """
-    hyperparameters = {}
 
     # Hyperparameter tuning (optional)
+    if hyperparameters is None:
+        hyperparameters = {}
     if enable_tuning:
         try:
             model.tune(
@@ -103,10 +121,13 @@ def train_and_validate_model(
                 epochs=tune_epochs,
                 iterations=tune_iterations,
                 optimizer=tune_optimizer,
+                imgsz=imgsz,
+                device=device,
+                batch=batch,
                 plots=tune_plots,
                 save=tune_save,
                 val=tune_val,
-                exist_ok=True
+                exist_ok=False,
             )
             # Get the best hyperparameters
             latest_tune_dir = get_latest_tune_dir("runs/detect")
@@ -128,27 +149,35 @@ def train_and_validate_model(
             data=dataset,
             epochs=train_epochs,
             device=device,
+            imgsz=imgsz,
             optimizer=optimizer,
             batch=batch,
             patience=patience,
-            exist_ok=True,
+            exist_ok=False,
             **hyperparameters
         )
     except Exception as e:
         print(f"Error during training: {e}")
 
-    # Validation
+    # Save the model
+    if save_path:
+        try:
+            print(f"Saving model to: {save_path}")
+            model.save(save_path)
+        except Exception as e:
+            print(f"Error during saving: {e}")
+
+    # Val on validation set
     try:
-        model.val(data=dataset, batch=batch, exist_ok=True)
+        model.val(data=dataset, batch=batch, exist_ok=False)
     except Exception as e:
         print(f"Error during validation: {e}")
 
-    # Save the model
+    # Val on test set
     try:
-        print(f"Saving model to: {save_path}")
-        model.save(save_path)
+        model.val(data=dataset, batch=batch, split='test', exist_ok=False)
     except Exception as e:
-        print(f"Error during saving: {e}")
+        print(f"Error during testing: {e}")
 
 
 def main():
@@ -160,67 +189,64 @@ def main():
     update_settings()
     print(settings)
 
-    # Load model and dataset
-    model_crop_and_weed2 = YOLO(model_pretrained, task='detect')
-    #dataset = crop_or_weed2
+    # Load model and dataset: YOLO11n pretrained with default params and imgsz1920 and Coarse1, train 50 epochs
+    yolo11n_default_best = YOLO("/app/models/cow_default_best/cow_yolo11n_default_best.pt", task='detect')
+    train_and_validate_model(yolo11n_default_best, crop_or_weed2, device, train_epochs=50, imgsz=1920)
 
-    train_and_validate_model(model_crop_and_weed2, crop_or_weed2, device, yolo_crop_or_weed2, enable_tuning=True, tune_epochs=10, tune_iterations=300, train_epochs=200)
+    torch.cuda.empty_cache()
+
+    # Load model and dataset: YOLO11s with default params and imgsz1280 and Coarse1, train 50 epochs
+    yolo11s_default_best = YOLO("/app/models/cow_default_best/cow_yolo11s_default_best.pt", task='detect')
+    train_and_validate_model(yolo11s_default_best, crop_or_weed2, device, train_epochs=50, imgsz=1920)
+
+    torch.cuda.empty_cache()
+
+    # Load model and dataset: YOLO11m with default params and imgsz1280 and Coarse1, train 50 epochs
+    yolo11m_default_best = YOLO("/app/models/cow_default_best/cow_yolo11m_default_best.pt", task='detect')
+    train_and_validate_model(yolo11m_default_best, crop_or_weed2, device, train_epochs=50, imgsz=1920)
+
+    torch.cuda.empty_cache()
+
+    yolo11l_default = YOLO("/app/models/yolo11l.pt", task='detect')
+    train_and_validate_model(yolo11l_default, crop_or_weed2, device, train_epochs=100, imgsz=1280)
     '''
-    # Hyperparameter tuning
-    try:
-        model.tune(data=dataset, epochs=2, iterations=6, optimizer="AdamW", plots=True, save=True, val=True, exist_ok=True)
-    except Exception as e:
-        print(f"Error during tuning: {e}")
-        return
-    #hyp_path = "runs/detect/tune/best_hyperparameters.yaml"
-    latest_tune_dir = get_latest_tune_dir("runs/detect")
-    if latest_tune_dir:
-        hyp_path = os.path.join(latest_tune_dir, "best_hyperparameters.yaml")
-    else:
-        hyp_path = None
-
-    if hyp_path and os.path.exists(hyp_path):
-        with open(hyp_path, 'r') as file:
-            hyperparameters = yaml.safe_load(file)
-    else:
-        print("Using default hyperparameters.")
-        hyperparameters = {}
-
-    # Train the model
-    try:
-        model.train(data=dataset, epochs=5, device=device, optimizer="auto", batch=-1, patience=10, exist_ok=True, **hyperparameters)
-    except Exception as e:
-        print(f"Error during training: {e}")
-
-    # Validation
-    try:
-        model.val(data=dataset, batch=-1, exist_ok=True)
-    except Exception as e:
-        print(f"Error during validation: {e}")
-
-    # Save the model
-    try:
-        print(f"Saving model to: {yolo_crop_or_weed2}")
-        model.save(yolo_crop_or_weed2)
-    except Exception as e:
-        print(f"Error during saving: {e}")
-
-    # CropOrWeed2 dataset
-    #tune_model(model_pretrained, crop_or_weed2)
-    train_model(model_pretrained, crop_or_weed2, yolo_crop_or_weed2, device)#, hyperparams=True)
-    evaluate_model(yolo_crop_or_weed2, crop_or_weed2, device)
+    # Load model and dataset: YOLO11s and CropOrWeed2
+    cow_yolo11s_default_finetuned_imgsz_1280 = YOLO("/app/models/cow_default_finetuned_1280_best/cow_yolo11s_default_finetuned_imgsz_1280.pt", task='detect')
+    train_and_validate_model(cow_yolo11s_default_finetuned_imgsz_1280, crop_or_weed2, device, enable_tuning=True, train_epochs=50, imgsz=1280)
 
 
-    # Fine24 dataset
-    best_hp_fine24 = tune_model(model_pretrained, fine24)
-    train_model(model_pretrained, fine24, yolo_fine24, device, best_hp_fine24)
-    evaluate_model(yolo_fine24, fine24, device)
 
-    # Train pretrained CropOrWeed2 YOLO on Fine24
-    best_hp_both = tune_model(yolo_crop_or_weed2, fine24)
-    train_model(yolo_crop_or_weed2, fine24, yolo_both, device, best_hp_both)
-    evaluate_model(yolo_both, fine24, device)
+    # Load model and dataset: YOLO11m and CropOrWeed2
+    cow_yolo11m_default = YOLO("/app/models/cow_default_best/cow_yolo11m_default_best.pt", task='detect')
+    cow_yolo11m_default.val(data=crop_or_weed2, split='test', exist_ok=False)
+    train_and_validate_model(cow_yolo11m_default, crop_or_weed2, device, train_epochs=50, imgsz=1280)
+
+    torch.cuda.empty_cache()
+    #___________________________________________________________________________________________
+
+    # Load model and dataset: YOLO11n and CropOrWeed2Eval
+    cow_eval_yolo11n_default = YOLO("/app/models/cow_eval_default_best/cow_eval_yolo11n_default_best.pt", task='detect')
+    cow_eval_yolo11n_default.val(data=crop_or_weed2_eval, split='test', exist_ok=False)
+    train_and_validate_model(cow_eval_yolo11n_default, crop_or_weed2_eval, device, train_epochs=50, imgsz=1280)
+
+    torch.cuda.empty_cache()
+
+    # Load model and dataset: YOLO11s and CropOrWeed2Eval
+    cow_eval_yolo11s_default = YOLO("/app/models/cow_eval_default_best/cow_eval_yolo11s_default_best.pt", task='detect')
+    cow_eval_yolo11s_default.val(data=crop_or_weed2_eval, split='test', exist_ok=False)
+    train_and_validate_model(cow_eval_yolo11s_default, crop_or_weed2_eval, device, train_epochs=50, imgsz=1280)
+
+    torch.cuda.empty_cache()
+
+    # Load model and dataset: YOLO11m and CropOrWeed2Eval
+    cow_eval_yolo11m_default = YOLO("/app/models/cow_eval_default_best/cow_eval_yolo11m_default_best.pt", task='detect')
+    cow_eval_yolo11m_default.val(data=crop_or_weed2_eval, split='test', exist_ok=False)
+    train_and_validate_model(cow_eval_yolo11m_default, crop_or_weed2_eval, device, train_epochs=50, imgsz=1280)
     '''
+
+    while True:
+        time.sleep(60)
+
 
 if __name__ == "__main__":
     main()
