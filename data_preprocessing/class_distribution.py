@@ -44,7 +44,7 @@ def plot_class_distribution(class_counter, class_names=None, title="Class Distri
         classes = list(class_counter.keys())
     counts = list(class_counter.values())
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(6, 3))
     plt.bar(classes, counts, tick_label=[f"{c}" for c in classes])
     plt.xlabel("Classes")
     plt.ylabel("Counts")

@@ -2,13 +2,7 @@ from ultralytics import YOLO, settings
 import os
 import torch
 import time
-#from ..config_paths import (DATASETS_DIR, FINE24, CROP_OR_WEED2, MODEL_PRETRAINED, YOLO_CROP_OR_WEED2, YOLO_FINE24, YOLO_BOTH)
-#from config import YOLO_DATA_DIR, YOLO_DIR
 import yaml
-
-#crop_or_weed2 = os.path.join(YOLO_DATA_DIR, "CropOrWeed2/CropOrWeed2.yaml")
-#model_pretrained = os.path.join(YOLO_DIR, "models/yolo11n.pt")
-#yolo_crop_or_weed2 = os.path.join(YOLO_DIR, "models_trained/yolo11n_crop_or_weed2.pt")
 
 #_________________________datasets__________________________
 

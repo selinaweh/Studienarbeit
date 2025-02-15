@@ -8,14 +8,9 @@ sys.path.append(project_dir)
 # original dataset
 DATADICTS = os.path.join(project_dir, "cropandweed_dataset/cnw/utilities/datasets.py")
 DATA_DIR = os.path.join(project_dir, "cropandweed_dataset/data/")
-IMG_DIR = os.path.join(DATA_DIR, "images")
-BBOXES_DIR = os.path.join(DATA_DIR, "bboxes")
-LABELS_DIR = os.path.join(DATA_DIR, "labelIds")
-PARAMS_DIR = os.path.join(DATA_DIR, "params")
+IMG_DIR = os.path.join(DATA_DIR, "images/")
+LABELS_DIR = os.path.join(DATA_DIR, "bboxes/")
 
-# PyTorch datasets
-PT = os.path.join(project_dir, "pytorch/")
-PT_DATA_DIR = os.path.join(PT, "datasets/")
 
 # YOLO datasets
 YOLO_DIR = os.path.join(project_dir, "YOLO/")

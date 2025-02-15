@@ -3,17 +3,14 @@ import json
 import shutil
 from config import YOLO_DATA_DIR
 
-crop_or_weed2_txt = os.path.join(YOLO_DATA_DIR, "CropOrWeed2_txt") # reference
+crop_or_weed2 = os.path.join(YOLO_DATA_DIR, "CropOrWeed2") # reference
 coarse1 = os.path.join(YOLO_DATA_DIR, "Coarse1")
-crop_or_weed2 = os.path.join(YOLO_DATA_DIR, "CropOrWeed2")
 crop_or_weed2_eval = os.path.join(YOLO_DATA_DIR, "CropOrWeed2Eval")
 
 
 def create_empty_label_files(base_path):
     """
     Create empty label files for images that do not have any objects.
-    :param base_path:
-    :return:
     """
     splits = ["train", "val", "test"]
 
@@ -148,7 +145,6 @@ def verify_split_distribution(base_path, distribution_file):
 
 
 if __name__ == "__main__":
-    
 
     with open("split_distribution.json", "r") as f:
         dist = json.load(f)
