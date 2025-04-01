@@ -25,7 +25,7 @@ RUN pip3 install --no-cache-dir -r /app/requirements.txt
 COPY ./datasets/CropOrWeed2 /app/datasets/CropOrWeed2
 #COPY ./datasets/Coarse1 /app/datasets/Coarse1
 COPY ./models/cow_default_best /app/models/cow_default_best
-COPY ./models/yolo11l.pt /app/models/yo11l.pt
+COPY ./models/yolo11n.pt /app/models/yo11n.pt
 COPY ./scripts /app/scripts
 
 

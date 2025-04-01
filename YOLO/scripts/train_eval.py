@@ -69,7 +69,6 @@ def train_and_validate_model(
     dataset,
     device,
     imgsz=640,
-    save_path=None,
     enable_tuning=False,
     tune_epochs=10,
     tune_iterations=100,
@@ -153,14 +152,6 @@ def train_and_validate_model(
     except Exception as e:
         print(f"Error during training: {e}")
 
-    # Save the model
-    if save_path:
-        try:
-            print(f"Saving model to: {save_path}")
-            model.save(save_path)
-        except Exception as e:
-            print(f"Error during saving: {e}")
-
     # Val on validation set
     try:
         model.val(data=dataset, batch=batch, exist_ok=False)
@@ -184,9 +175,9 @@ def main():
     print(settings)
 
     # Load model and dataset: YOLO11n pretrained with default params and imgsz1920 and Coarse1, train 50 epochs
-    yolo11n_default_best = YOLO("/app/models/cow_default_best/cow_yolo11n_default_best.pt", task='detect')
-    train_and_validate_model(yolo11n_default_best, crop_or_weed2, device, train_epochs=50, imgsz=1920)
-
+    yolo11n = YOLO("/app/models/yolo11n.pt", task='detect')
+    train_and_validate_model(yolo11n, crop_or_weed2, device, train_epochs=50, imgsz=640)
+    '''
     torch.cuda.empty_cache()
 
     # Load model and dataset: YOLO11s with default params and imgsz1280 and Coarse1, train 50 epochs
@@ -203,7 +194,7 @@ def main():
 
     yolo11l_default = YOLO("/app/models/yolo11l.pt", task='detect')
     train_and_validate_model(yolo11l_default, crop_or_weed2, device, train_epochs=100, imgsz=1280)
-    '''
+
     # Load model and dataset: YOLO11s and CropOrWeed2
     cow_yolo11s_default_finetuned_imgsz_1280 = YOLO("/app/models/cow_default_finetuned_1280_best/cow_yolo11s_default_finetuned_imgsz_1280.pt", task='detect')
     train_and_validate_model(cow_yolo11s_default_finetuned_imgsz_1280, crop_or_weed2, device, enable_tuning=True, train_epochs=50, imgsz=1280)
