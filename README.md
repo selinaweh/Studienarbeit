@@ -22,4 +22,4 @@ The detailed results and logs of the different training strategies can be found 
 ![mAP@50-95 for YOLOv11n, s, m for the best strategy CropOrWeed2](mAP.png)
 
 ## Example image Crop and Weed prediction (YOLOv11n)
-![Example image Crop and Weed prediction (YOLOv11n)](\runs\detect\vwg_0586_0010\vwg-0586-0010.jpg)
+![Example image Crop and Weed prediction (YOLOv11n)](vwg-0586-0010.jpg)
