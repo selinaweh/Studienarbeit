@@ -174,7 +174,9 @@ def main():
     update_settings()
     print(settings)
 
-    # Load model and dataset: YOLO11n pretrained with default params and imgsz1920 and Coarse1, train 50 epochs
+    #________________Load model and dataset for training_____________________
+
+    # Load model and dataset: YOLO11n with default params and imgsz640 and CropOrWeed2, train 50 epochs
     yolo11n = YOLO("/app/models/yolo11n.pt", task='detect')
     train_and_validate_model(yolo11n, crop_or_weed2, device, train_epochs=50, imgsz=640)
     '''
